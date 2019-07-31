@@ -1,6 +1,12 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[26]:
 
 
-class SimplicialOperator(object):
+from itertools import combinations, product
+
+class Operator(object):
     '''
     Models a simplicial operator of the form:
 
@@ -22,14 +28,14 @@ class SimplicialOperator(object):
 
     def __init__(self, deg_maps = [], face_maps = []):
 
-        self.deg_maps  = SimplicialOperator.deg_maps_sort(deg_maps)
-        self.face_maps = SimplicialOperator.face_maps_sort(face_maps)
+        self.deg_maps  = Operator.deg_maps_sort(deg_maps)
+        self.face_maps = Operator.face_maps_sort(face_maps)
 
     def __repr__(self):
 
         s, d = repr(self.deg_maps), repr(self.face_maps)
 
-        return f'SimplicialOperator(deg_maps={s}, face_maps={d})'
+        return f'Operator(deg_maps={s}, face_maps={d})'
 
     def __str__(self):
 
@@ -105,11 +111,18 @@ class SimplicialOperator(object):
         # One can maybe optimize the following using that
         # s_left, s, d, and d_right are totally ordered
 
-        new_deg_maps  = SimplicialOperator.deg_maps_sort(s_left + s)
-        new_face_maps = SimplicialOperator.face_maps_sort(d + d_right)
+        new_deg_maps  = Operator.deg_maps_sort(s_left + s)
+        new_face_maps = Operator.face_maps_sort(d + d_right)
 
-        return SimplicialOperator(new_deg_maps, new_face_maps)
+        return Operator(new_deg_maps, new_face_maps)
 
+    def prime(self):
+        '''adds 1 to all the numbers defining the face and degeneracy maps 
+        of the operator'''
+        
+        return Operator((v+1 for v in self.deg_maps),
+                        (w+1 for w in self.face_maps))
+    
     @staticmethod
     def deg_maps_sort(deg_maps):
         '''puts the degeneracy maps in canonical order s > ... > s using
@@ -151,9 +164,9 @@ class SimplicialOperator(object):
             face_maps[position] = currentvalue
 
         return tuple(face_maps)
+    
 
-
-class SimplicialBioperator:
+class Bioperator:
     '''
     Models a simplicial bioperator of form:
 
@@ -164,10 +177,15 @@ class SimplicialBioperator:
     s > ... > s d < ... < d (x) s > ... > s d < ... < d
     '''
 
-    def __init__(self, deg_maps1=[], face_maps1=[], deg_maps2=[], face_maps2=[]):
-
-        self.op1 = SimplicialOperator(deg_maps1, face_maps1)
-        self.op2 = SimplicialOperator(deg_maps2, face_maps2)
+    def __init__(self, deg_maps1=[], face_maps1=[], 
+                       deg_maps2=[], face_maps2=[]):
+        
+        if isinstance(deg_maps1, Operator) and isinstance(face_maps1, Operator):
+            self.op1 = deg_maps1
+            self.op2 = face_maps1
+        else:
+            self.op1 = Operator(deg_maps1, face_maps1)
+            self.op2 = Operator(deg_maps2, face_maps2)
 
     def __repr__(self):
 
@@ -175,21 +193,26 @@ class SimplicialBioperator:
         s2, d2 = self.op2.deg_maps, self.op2.face_maps
 
         return (f'Bioperator(deg_maps1={s1}, face_maps1={d1}, '
-                         + f'deg_maps2={s2}, face_maps2={d2}')
+                         + f'deg_maps2={s2}, face_maps2={d2})')
 
     def __str__(self):
 
         return(str(self.op1) + ' x ' + str(self.op2))
 
-    def __call__(self, spx1, spx2):
-
-        return self.op1(spx1), self.op2(spx2)
-
+    def __call__(self, spx1, spx2=None):
+        
+        if spx2 is None:
+            return self.op1(spx1), self.op2(spx1)
+        else:
+            return self.op1(spx1), self.op2(spx2)
+    
+    @property
     def bidegree(self):
         '''returns the bidegree of the operator as a pair of int'''
 
         return self.op1.degree(), self.op2.degree()
-
+    
+    @property
     def is_degenerate(self):
         '''returns True if the operator is degenerate and False if not'''
 
@@ -204,5 +227,157 @@ class SimplicialBioperator:
         op1 = self.op1.compose(other.op1)
         op2 = self.op2.compose(other.op2)
 
-        return SimplicialBioperator(op1.deg_maps, op1.face_maps,
-                                    op2.deg_maps, op2.face_maps)
+        return Bioperator(op1.deg_maps, op1.face_maps,
+                          op2.deg_maps, op2.face_maps)
+    
+    def prime(self):
+        '''adds 1 to all the numbers defining the face and degeneracy maps 
+        of the operator'''
+        
+        return Bioperator(self.op1.prime(), self.op2.prime())
+
+
+####### EZ-AW #########
+
+def alexander_whitney(n, q=None):
+    '''if an integer n is passed it returns the linear combination of bioperators defining the 
+    restriction of AW to degree n. If two integers (p, q) are passed it provides the single 
+    bioperad defining the projection to bidegree (p, q) of the AW map'''
+    
+    if not q is None:
+        p = n
+        return Bioperator(face_maps1 = range(p+1,p+q+1), 
+                          face_maps2 = range(0,p))
+    
+    # dictionary of bioperators indexed by (-n,0), (-n+1, -1), ... , (0,-n)
+    if q == None:
+        answer = {}
+        for i in range(n+1):
+            answer[(-n+i, -i)] = Bioperator(face_maps1 = range(i+1,n+1), 
+                                            face_maps2 = range(0,i))
+
+        return answer
+    
+def eilenberg_zilber(n, q=None, all_bidegrees=False):
+    '''if a single integer n is passed, it returns a dictionary whose keys are bidegrees adding to n
+    and values the bioperators defining the restriction of EZ to that bidegree. If all_bidegrees 
+    is True it gives the same but the condition is that bidegrees add up to less than or equal to n.
+    
+    If a pair of integers p,q is passed it returns the bioperators defining EZ in bidegree (p,q). 
+    If all_bidegrees is true it acts as if a single integer p+q was passed.'''
+    
+    # operators in bidegree (q,p) acting on elements of bidegree (p,q)
+    if q != None:
+        p = n
+        if (p,q) == (0,0):
+            return {Bioperator()}
+
+        answer = set()
+        if p > 0:
+            west = eilenberg_zilber(p-1, q)
+            for biop in west:
+                answer ^= {Bioperator(
+                                deg_maps1 = biop.op1.deg_maps,
+                                deg_maps2 = [p+q-1] + list(biop.op2.deg_maps))}
+        if q > 0:
+            south = eilenberg_zilber(p, q-1)
+            for biop in south:
+                answer ^= {Bioperator(
+                                deg_maps1 = [p+q-1] + list(biop.op1.deg_maps),
+                                deg_maps2 = biop.op2.deg_maps)}
+        return answer
+    
+    # dictionary of all bioperators indexed by bidegrees
+    # (memory intensive)
+    if all_bidegrees:
+        if q:
+            n += q
+            
+        answer = {(0,0): {Bioperator()}}
+        for m in range(1, n+1):
+            answer.update({(p,m-p): set() for p in range(m+1)})
+            for i in range(m):
+                j = m-i-1
+                for biop in bioperators[(i,j)]:
+                    answer[(i,j+1)] ^= {Bioperator(
+                                            deg_maps1 = biop.op1.deg_maps,
+                                            deg_maps2 = [i+j] + list(biop.op2.deg_maps))}
+
+                    answer[(i+1,j)] ^= {Bioperator(
+                                            deg_maps1 = [i+j] + list(biop.op1.deg_maps),
+                                            deg_maps2 = biop.op2.deg_maps)}
+            
+        return bioperators
+    
+    # dictionary of bioperators indexed by bidegrees (0,n), (1,n-1), ... , (n,0)
+    if q == None:
+        if n == 0:
+            return {(0,0) : {Bioperator()}}
+
+        if n > 0:
+            answer = {(i,n-i): set() for i in range(n+1)}
+            for bidegree, biops in eilenberg_zilber(n-1).items():
+                i, j = bidegree
+                answer[(i,j+1)] ^= {Bioperator(
+                                        deg_maps1 = biop.op1.deg_maps,
+                                        deg_maps2 = [i+j] + list(biop.op2.deg_maps))
+                                            for biop in biops}
+
+                answer[(i+1,j)] ^= {Bioperator(
+                                        deg_maps1 = [i+j] + list(biop.op1.deg_maps),
+                                        deg_maps2 = biop.op2.deg_maps)
+                                            for biop in biops}
+            return answer
+
+def shih(n):
+    '''returns all bioperators defining the chain homotopy between 
+    EZAW and the identity. Some of them are degenerate.'''
+    
+    if n == 0:
+        return set()
+    
+    s_0s_0 = Bioperator(deg_maps1=[0], deg_maps2=[0])
+    
+    ez = eilenberg_zilber(n)
+    aw = alexander_whitney(n)
+    ezaw = set()
+    for i in range(n+1):
+        ezaw ^= {biop.compose(aw[(-i,-n+i)]) for biop in ez[(i,n-i)]}
+        
+    answer = {biop.prime().compose(s_0s_0) for biop in ezaw}
+    
+    if n == 1:
+        return answer
+
+    if n > 1:
+        return answer^{biop.prime() for biop in shih(n-1)}
+        
+
+######## STEENROD ########
+
+def steenrod_diagonal(n,i):
+    '''...'''
+    if type(n) != int or n < 0 :
+        raise ValueError('The first entry (dimension) must be a non-negative integer')
+    
+    elif type(i) != int :
+        raise ValueError('The second entry (i) must be an integer')
+
+    elif n < i or i < 0 :
+        return set() # no operators model for 0 operator
+    
+    answer = set()
+    for U in combinations(range(n+1), n-i):
+        
+        U_minus, U_plus = [], []
+        for u in U :
+            if (U.index(u) + u) % 2 == 1:
+                U_minus.append(u)
+            else :
+                U_plus.append(u)
+        
+        answer ^= {Bioperator(face_maps1 = U_minus, 
+                              face_maps2 = U_plus)}
+    
+    return answer
+
