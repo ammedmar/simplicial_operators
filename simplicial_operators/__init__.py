@@ -4,3 +4,7 @@ from .Simplicial_operators import alexander_whitney
 from .Simplicial_operators import eilenberg_zilber
 from .Simplicial_operators import shih
 from .Simplicial_operators import steenrod_diagonal
+from .Simplicial_operators import table_reduction
+from .Simplicial_operators import surjection_operator
+from .Simplicial_operators import barratt_eccles_operator
+from .Simplicial_operators import cartan_operator

@@ -1,10 +1,24 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[26]:
+# In[1]:
 
 
-from itertools import combinations, product
+from itertools import combinations, product, chain, permutations
+
+def partitions(n,k,l=1):
+    '''n is the integer to partition and k is the length of partitions
+    we get all k tuples in non-decreassing order of positive integers
+    adding to n'''
+    if k == 1:
+        if n >= l:
+            yield (n,)
+        return
+    for i in range(l,n+1):
+        for result in partitions(n-i,k-1,i):
+            yield (i,)+result
+            
+####### OPERATOR - BIOPERATOR #########
 
 class Operator(object):
     '''
@@ -74,7 +88,7 @@ class Operator(object):
             except IndexError:
                 raise ValueError('simplex not in the domain of the operator')
 
-        return simplex
+        return tuple(simplex)
 
     @property
     def degree(self):
@@ -236,7 +250,6 @@ class Bioperator:
         
         return Bioperator(self.op1.prime(), self.op2.prime())
 
-
 ####### EZ-AW #########
 
 def alexander_whitney(n, q=None):
@@ -298,7 +311,7 @@ def eilenberg_zilber(n, q=None, all_bidegrees=False):
             answer.update({(p,m-p): set() for p in range(m+1)})
             for i in range(m):
                 j = m-i-1
-                for biop in bioperators[(i,j)]:
+                for biop in answer[(i,j)]:
                     answer[(i,j+1)] ^= {Bioperator(
                                             deg_maps1 = biop.op1.deg_maps,
                                             deg_maps2 = [i+j] + list(biop.op2.deg_maps))}
@@ -307,7 +320,7 @@ def eilenberg_zilber(n, q=None, all_bidegrees=False):
                                             deg_maps1 = [i+j] + list(biop.op1.deg_maps),
                                             deg_maps2 = biop.op2.deg_maps)}
             
-        return bioperators
+        return answer
     
     # dictionary of bioperators indexed by bidegrees (0,n), (1,n-1), ... , (n,0)
     if q == None:
@@ -352,7 +365,6 @@ def shih(n):
     if n > 1:
         return answer^{biop.prime() for biop in shih(n-1)}
         
-
 ######## STEENROD ########
 
 def steenrod_diagonal(n,i):
@@ -380,4 +392,178 @@ def steenrod_diagonal(n,i):
                               face_maps2 = U_plus)}
     
     return answer
+
+######### TABLE REDUCTION ###########
+def table_reduction(bar_ecc_elements):
+    '''given a set of basis element in the Barratt-Eccles operad, it returns the set of
+        surjections in its image via the table reduction morphism'''
+    
+    if not isinstance(bar_ecc_elements, set):
+        bar_ecc_elements = {bar_ecc_elements}
+    
+    answer = set()
+    for bar_ecc_element in bar_ecc_elements:
+        d, a = len(bar_ecc_element)-1, max(bar_ecc_element[0]) #dimension and arity
+        
+        ordered_partitions = chain.from_iterable(
+            set(permutations(p)) for p in partitions(d+a, d+1))
+            
+        for pi in ordered_partitions:
+            
+            surjection, removed = [], []
+            degenerate = False
+            for idx, i in enumerate(pi):
+                 filtered =  [i for i in bar_ecc_element[idx] if i not in removed]
+             
+                 if idx > 0 and surjection[-1] == filtered[0]:
+                     degenerate = True
+                     break
+                 
+                 if i > 1:
+                     removed += filtered[:i-1]
+                     
+                 surjection += filtered[:i]
+        
+            if not degenerate:
+                answer ^= {tuple(surjection)}
+
+    return answer
+
+############ OPERADS ################
+
+def surjection_operator(d, surjections):
+    '''returns the set of multioperators representing the action of the passed 
+    set of surjection on a d-simplex'''
+    
+    if not isinstance(surjections, set):
+        surjections = set((surjections,))
+     
+    for surj in surjections:
+        def _new_term(term, num_to_append, pos_to_append, k):
+            tuple_to_replace = term['seq'][pos_to_append]+(num_to_append,)
+
+            return {'pos': term['pos']+k, 
+                    'seq': term['seq'][:pos_to_append] 
+                            + (tuple_to_replace,)
+                            + term['seq'][pos_to_append+1:]}
+
+        after = [{'pos': 0, 
+                  'seq': ((),)*(surj[0]-1) + ((0,),) + ((),)*(max(surj)-surj[0])}]
+
+        for i in range(d+len(surj)-1):
+            before = after[:]
+            after = []
+            for term in before:
+                if term['pos'] < len(surj)-1:
+                    num_to_append = term['seq'][surj[term['pos']]-1][-1]
+                    pos_to_append = surj[term['pos']+1]-1
+
+                    empty = bool(term['seq'][pos_to_append])
+                    if not empty or num_to_append != term['seq'][pos_to_append][-1]:
+                        after.append(_new_term(term, num_to_append, pos_to_append,1))
+
+                if term['seq'][surj[term['pos']]-1][-1] < d:
+                    num_to_append = term['seq'][surj[term['pos']]-1][-1] + 1
+                    pos_to_append = surj[term['pos']]-1
+
+                    after.append(_new_term(term, num_to_append, pos_to_append,0))
+
+        answer = set()
+        for term in after:
+            operators = tuple()
+            for seq in term['seq']:
+                operators += (Operator(face_maps=[i for i in range(d+1) if i not in seq]),)
+            answer ^= {operators}
+
+    return answer
+
+def barratt_eccles_operator(d, bar_ecc_elements):
+    '''returns the multioperator defining the action of a barratt-eccles 
+    element on simplices of dimension d'''
+    
+    if not isinstance(bar_ecc_elements, set):
+        bar_ecc_elements = {bar_ecc_elements}
+        
+    answer = set()
+    for bar_ecc_element in bar_ecc_elements:
+        surjections = table_reduction(bar_ecc_element)
+        for surjection in surjections:
+            answer ^= surjection_operator(d, surjection)
+        
+    return answer
+
+############# CARTAN ############
+
+def cartan_operator(d, i):
+    '''
+    it returns the multioperators defining the i-th cartan coboundary in degree d when 
+    applied to homogeneous cocycles
+    '''
+    
+    def first_homotopy(n):
+        '''applies the first homotopy to the element 
+        \tilde x_n = (e, (12), ..., (12)^n)
+
+        \sum_{i=0}^n ( (23)f(e), \dots,  (23)f((12)^i), g((12)^i), \dots, g((12)^n))
+
+        (23)f(12) = (23)(13)(24) = (2,4,1,3)
+            g(12) = (12)(34)     = (2,1,4,3)
+
+        '''
+
+        # permutations (23), (12)(34)(23) and e, (12)(34) 
+        a = {0: (1,3,2,4), 1: (2,4,1,3)}
+        b = {0: (1,2,3,4), 1: (2,1,4,3)}
+
+        x = tuple(a[i%2] for i in range(n+1))
+        y = tuple(b[i%2] for i in range(n+1))
+
+        answer = set()
+        for i in range(n+1):
+            answer ^= {x[:i+1]+y[i:]}
+
+        return answer
+
+    def second_homotopy(n):
+        '''
+        applies the second homotopy to the element 
+        \tilde x_n = (e, (12), ..., (12)^n)
+
+        \circ_{\mathcal E}( (e, \dots, e) \otimes SHI (x \otimes x) )
+        '''
+
+        sigma_two = {0: (1,2), 1: (2,1)}
+        x = [sigma_two[i%2] for i in range(n+1)]
+
+        if n == 0:
+            return set()
+
+        # composition (e, x, y) with x,y in sigma_two
+        composition = {((1,2), (2,1)) : (1,2,4,3),
+                       ((2,1), (1,2)) : (2,1,3,4),
+                       ((2,1), (2,1)) : (2,1,4,3),
+                       ((1,2), (1,2)) : (1,2,3,4)}
+
+        values = set()
+        for op in shih(n):
+            if not op.is_degenerate:
+                values ^= {op(x)}
+
+        answer = set()
+        for value in values:
+
+            table = tuple()
+            for i in range(n+2):
+                table += tuple((composition[(value[0][i], value[1][i])],))
+
+            answer ^= {table}
+
+        return answer
+
+    all_operators = barratt_eccles_operator(d, first_homotopy(i)^second_homotopy(i))
+    filtered_by_degree = {multiop for multiop in all_operators if 
+                          multiop[0].degree == multiop[1].degree and 
+                          multiop[2].degree == multiop[3].degree}
+    
+    return filtered_by_degree
 
