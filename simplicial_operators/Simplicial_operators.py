@@ -203,6 +203,35 @@ class Operator(object):
             face_maps[position] = currentvalue
 
         return tuple(face_maps)
+    
+    @staticmethod
+    def display(multiop):
+        '''tool to aid visualization of multioperators'''
+        if isinstance(multiop, Operator):
+            return str(multiop)
+        if isinstance(multiop, tuple):
+            return tuple(str(op) for op in multiop)
+        if isinstance(multiop, set):
+            return set(Operator.display(mop) for mop in multiop)
+        else:
+            raise TypeError('expected either: Operator, tuple of Operator, or set of tuple of Operator')
+    
+    @staticmethod
+    def is_degenerate(multiop):
+        '''returns True if a multioperator is degenerate'''
+        if isinstance(multiop, Operator):
+            return multiop.is_degenerate
+        if isinstance(multiop, tuple):
+            deg = set(multiop[0].deg_maps)
+            for op in multiop:
+                deg = deg.intersection(set(op.deg_maps))
+            return bool(deg)
+        else:
+            raise TypeError('expected either Operator or tuple of Operators')
+    
+    @staticmethod
+    def is_nondegenerate(multiop):
+        return not Operator.is_degenerate(multiop)
 
 ####### EZ-AW-SHI #########
 
