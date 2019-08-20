@@ -1,13 +1,6 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[2]:
-
-
 from itertools import combinations, product, chain, permutations
 from math import floor
 
-####### BASIC FUNCTIONS ##############
 def partitions(n, k, smallest_value=1, largest_value=None, ordered=False):
     '''n is the integer to partition and k is the length of partitions.
     It returns all k tuples of integers greater or equal to smallest_value 
@@ -43,7 +36,7 @@ def harmonic_partitions(n,k,smallest_value=1):
         for result in harmonic_partitions(n-(k*i), k-1, smallest_value):
             yield (i,)+result
             
-####### OPERATOR #########
+#-------- Operator --------
 
 class Operator(object):
     '''
@@ -233,7 +226,8 @@ class Operator(object):
     def is_nondegenerate(multiop):
         return not Operator.is_degenerate(multiop)
 
-####### EZ-AW-SHI #########
+    
+#--------- alexander_whitney, eilenberg_zilber, shih --------
 
 def alexander_whitney(n, q=None):
     '''if an integer n is passed it returns the linear combination of bioperators defining the 
@@ -281,8 +275,7 @@ def eilenberg_zilber(n, q=None, all_bidegrees=False):
                             Operator(deg_maps = biop[1].deg_maps))}
         return answer
     
-    # dictionary of all bioperators indexed by bidegrees
-    # (memory intensive)
+    # dictionary of all bioperators indexed by their bidegrees
     if all_bidegrees:
         if q:
             n += q
@@ -342,7 +335,7 @@ def shih(n):
     if n > 1:
         return answer^{(op0.prime(), op1.prime()) for op0, op1 in shih(n-1)}
     
-######## STEENROD ########
+#-------- Steenrod ---------
 
 def steenrod_diagonal(n,i):
     '''...'''
@@ -370,7 +363,7 @@ def steenrod_diagonal(n,i):
     
     return answer
 
-######### TABLE REDUCTION ###########
+#-------- table_reduction --------
 
 def table_reduction(bar_ecc_elements):
     '''given a set of basis element in the Barratt-Eccles operad, it returns the set of 
@@ -405,7 +398,7 @@ def table_reduction(bar_ecc_elements):
  
     return answer
 
-############ OPERADS ################
+#-------- surjection_operator & barratt-eccles_operator ################
 
 def surjection_operator(d, surjections):
     '''returns the set of multioperators representing the action of the passed 
@@ -468,7 +461,7 @@ def barratt_eccles_operator(d, bar_ecc_elements):
         
     return answer
 
-############# CARTAN ############
+#-------- cartan_operator --------
 
 def cartan_operator(d, i):
     '''
@@ -542,4 +535,3 @@ def cartan_operator(d, i):
                           multiop[2].degree == multiop[3].degree}
     
     return filtered_by_degree
-
