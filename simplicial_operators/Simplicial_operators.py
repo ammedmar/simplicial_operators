@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[8]:
 
 
 from itertools import combinations, product, chain, permutations
@@ -231,6 +231,51 @@ class Operator(object):
     @staticmethod
     def is_nondegenerate(multiop):
         return not Operator.is_degenerate(multiop)
+    
+    @staticmethod
+    def act(multiop, lincomb):
+        '''modeling the action of multioperators'''
+        # single Operator and single simplex
+        if isinstance(multiop, Operator) and not isinstance(lincomb, set):
+            return multiop(lincomb)
+        
+        # single Operator and set of simplices
+        if isinstance(multiop, Operator) and isinstance(lincomb, set):
+            answer = set()
+            for spx in lincomb:
+                answer ^= {multiop(spx)}
+            return answer
+        
+        # single multioperator and single multisimplex
+        if isinstance(multiop, tuple) and not isinstance(lincomb, set):
+            if len(multiop) == len(lincomb): 
+                return tuple(op(spx) for op, spx in zip(multiop, lincomb))
+            else:
+                raise TypeError('arities do not match')
+        
+        # single multioperator and set of multisimplices
+        if isinstance(multiop, tuple) and isinstance(lincomb, set):
+            answer = set()
+            for spx in lincomb:
+                answer ^= {Operator.act(multiop, spx)}
+            return answer
+        
+        # set of Operators or multioperators and single spx or multisimplex
+        if isinstance(multiop, set) and not isinstance(lincomb, set):
+            try:
+                return Operator.act(multiop, {tuple(lincomb)})
+            except TypeError:
+                raise(TypeError('Cannot be acted on'))
+        
+        # set of Operators or multioperators and set of simplices or multisimplices
+        if isinstance(multiop, set) and isinstance(lincomb, set):
+            answer = set()
+            for mop in multiop:
+                answer ^= Operator.act(mop, lincomb)
+            return answer
+        
+        else:
+            raise TypeError('cannot act: must be Operator, tuple of them, or a set of such tuples')
 
     
 #--------- alexander_whitney, eilenberg_zilber, shih --------
@@ -343,7 +388,7 @@ def shih(n):
     
 #-------- Steenrod ---------
 
-def steenrod_diagonal(n,i):
+def steenrod_diagonal(i, n):
     '''...'''
     if type(n) != int or n < 0 :
         raise ValueError('The first entry (dimension) must be a non-negative integer')
@@ -406,9 +451,9 @@ def table_reduction(bar_ecc_elements):
 
 #-------- surjection_operator & barratt-eccles_operator --------
 
-def surjection_operator(surjections, d):
+def surjection_operator(surjections, n):
     '''returns the set of multioperators representing the action of the passed 
-    set of surjection on a d-simplex'''
+    set of surjection on a n-simplex'''
     
     def _new_term(term, num_to_append, pos_to_append, k):
             tuple_to_replace = term['seq'][pos_to_append]+(num_to_append,)
@@ -425,7 +470,7 @@ def surjection_operator(surjections, d):
         after = [{'pos': 0, 
                   'seq': ((),)*(surj[0]-1) + ((0,),) + ((),)*(max(surj)-surj[0])}]
 
-        for i in range(d+len(surj)-1):
+        for i in range(n+len(surj)-1):
             before = after[:]
             after = []
             for term in before:
@@ -437,7 +482,7 @@ def surjection_operator(surjections, d):
                     if not empty or num_to_append != term['seq'][pos_to_append][-1]:
                         after.append(_new_term(term, num_to_append, pos_to_append,1))
 
-                if term['seq'][surj[term['pos']]-1][-1] < d:
+                if term['seq'][surj[term['pos']]-1][-1] < n:
                     num_to_append = term['seq'][surj[term['pos']]-1][-1] + 1
                     pos_to_append = surj[term['pos']]-1
 
@@ -447,12 +492,12 @@ def surjection_operator(surjections, d):
         for term in after:
             operators = tuple()
             for seq in term['seq']:
-                operators += (Operator(face_maps=[i for i in range(d+1) if i not in seq]),)
+                operators += (Operator(face_maps=[i for i in range(n+1) if i not in seq]),)
             answer ^= {operators}
 
     return answer
 
-def barratt_eccles_operator(bar_ecc_elements, d):
+def barratt_eccles_operator(bar_ecc_elements, n):
     '''returns the multioperator defining the action of a barratt-eccles 
     element on simplices of dimension d'''
     
@@ -463,7 +508,7 @@ def barratt_eccles_operator(bar_ecc_elements, d):
     for bar_ecc_element in bar_ecc_elements:
         surjections = table_reduction(bar_ecc_element)
         for surjection in surjections:
-            answer ^= surjection_operator(surjection, d)
+            answer ^= surjection_operator(surjection, n)
         
     return answer
 
@@ -529,17 +574,17 @@ def cartan_operator_second_homotopy(n):
 
     return answer
 
-def cartan_operator(i, d):
+def cartan_operator(i, n):
     '''
-    it returns the multioperators defining the i-th cartan coboundary in degree d when 
+    it returns the multioperators defining the i-th cartan coboundary in degree n when 
     applied to homogeneous cocycles
     '''
-    if i >= d:
+    if i >= n:
         return set()
     
     first  = cartan_operator_first_homotopy(i)
     second = cartan_operator_second_homotopy(i)
-    all_operators = barratt_eccles_operator(first^second, d)
+    all_operators = barratt_eccles_operator(first^second, n)
     
     filtered_by_degree = {multiop for multiop in all_operators if 
                           multiop[0].degree == multiop[1].degree and 
