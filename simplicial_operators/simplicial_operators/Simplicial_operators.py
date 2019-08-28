@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[8]:
-
-
 from itertools import combinations, product, chain, permutations
 from math import floor
 
