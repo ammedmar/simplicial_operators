@@ -158,18 +158,6 @@ class Operator(object):
         return tuple(face_maps)
     
     @staticmethod
-    def display(multiop):
-        '''tool to aid visualization of multioperators'''
-        if isinstance(multiop, Operator):
-            return str(multiop)
-        if isinstance(multiop, tuple):
-            return tuple(str(op) for op in multiop)
-        if isinstance(multiop, set):
-            return set(Operator.display(mop) for mop in multiop)
-        else:
-            raise TypeError('expected either: Operator, tuple of Operator, or set of tuple of Operator')
-    
-    @staticmethod
     def is_degenerate(multiop):
         '''returns True if a multioperator is degenerate'''
         if isinstance(multiop, Operator):
@@ -229,4 +217,32 @@ class Operator(object):
             return answer
         
         else:
-            raise TypeError('cannot act: must be Operator, tuple of them, or a set of such tuples')
+            raise TypeError('cannot act: must be Operator, '+
+                            'tuple of them, or a set of such tuples')
+            
+    @staticmethod
+    def display(multiop):
+        '''tool to aid visualization of multioperators'''
+        
+        if isinstance(multiop, Operator):
+            return str(multiop)
+        
+        if isinstance(multiop, tuple):
+            string = ''
+            for op in multiop:
+                string += str(op) + ' x '
+            return string[:-3]
+        
+        if isinstance(multiop, set):
+            string = '  '
+            for op in multiop:
+                string += Operator.display(op) + '\n+ '
+            return string[:-3]
+        
+        else:
+            raise TypeError('Expected types: Operator, tuple of '+
+                            'Operator, or set of tuple of Operator')
+            
+    @staticmethod
+    def display_act(multiop, multispx):
+        pass
