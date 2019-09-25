@@ -175,8 +175,8 @@ class Operator(object):
         return not Operator.is_degenerate(multiop)
     
     @staticmethod
-    def act(multiop, lincomb):
-        '''modeling the action of multioperators'''
+    def action(multiop, lincomb):
+        '''modeling the action of operators'''
         # single Operator and single simplex
         if isinstance(multiop, Operator) and not isinstance(lincomb, set):
             return multiop(lincomb)
@@ -199,13 +199,13 @@ class Operator(object):
         if isinstance(multiop, tuple) and isinstance(lincomb, set):
             answer = set()
             for spx in lincomb:
-                answer ^= {Operator.act(multiop, spx)}
+                answer ^= {Operator.action(multiop, spx)}
             return answer
         
         # set of Operators or multioperators and single spx or multisimplex
         if isinstance(multiop, set) and not isinstance(lincomb, set):
             try:
-                return Operator.act(multiop, {tuple(lincomb)})
+                return Operator.action(multiop, {tuple(lincomb)})
             except TypeError:
                 raise(TypeError('Cannot be acted on'))
         
@@ -213,7 +213,7 @@ class Operator(object):
         if isinstance(multiop, set) and isinstance(lincomb, set):
             answer = set()
             for mop in multiop:
-                answer ^= Operator.act(mop, lincomb)
+                answer ^= Operator.action(mop, lincomb)
             return answer
         
         else:
@@ -222,7 +222,7 @@ class Operator(object):
             
     @staticmethod
     def display(multiop):
-        '''tool to aid visualization of multioperators'''
+        '''tool to aid visualization of operators'''
         
         if isinstance(multiop, Operator):
             return str(multiop)
@@ -244,5 +244,33 @@ class Operator(object):
                             'Operator, or set of tuple of Operator')
             
     @staticmethod
-    def display_act(multiop, multispx):
-        pass
+    def display_action(multiop, lincomb):
+        '''modeling the action of operators'''
+        string = str(Operator.action(multiop, lincomb))
+        
+        if '{((' in string:
+            string = string.replace(')), ((', ')\n+ (')
+            string = string.replace('{(', '  ')
+            string = string.replace(')}', '')
+            string = string.replace('),', ') x')
+            return string
+        
+        elif '((' in string:
+            string = string.replace('), (', ') x (')
+            string = string.replace('((', '  (')
+            string = string.replace('))', ')')
+            return string  
+                
+        elif '{(' in string:
+            string = string.replace('), (', ')\n+ (')
+            string = string.replace('{', '  ')
+            string = string.replace('}', '')
+            return string
+        
+        elif '(' in string:
+            return '  ' + string
+        
+        else:
+            return '0'
+        
+    # TODO general composition
