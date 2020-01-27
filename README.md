@@ -10,6 +10,6 @@ Some standard simplicial operators are preloaded, for example:
 4. The action of the Barratt-Eccles operad
 5. A construction of Cartan coboundaries
 
-A list of notebooks are available to explain these simplicial operators.
+A collection of notebooks is available to explain these simplicial operators.
 
 **Instalation:** `pip install simplicial_operators`
