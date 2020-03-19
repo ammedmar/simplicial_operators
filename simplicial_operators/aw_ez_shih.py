@@ -65,7 +65,7 @@ def eilenberg_zilber(n, q=None, all_bidegrees=False):
                                          Operator(deg_maps = biop[1].deg_maps))}
         return answer
     
-    # dictionary of bioperators indexed by bidegrees (0,n), (1,n-1), ... , (n,0)
+    # dictionary of bioperators indexed by bidegrees (0,n), (1,n-1), ... ,(n,0)
     if q == None and not all_bidegrees:
         if n == 0:
             return {(0,0): {(Operator(), Operator())}}

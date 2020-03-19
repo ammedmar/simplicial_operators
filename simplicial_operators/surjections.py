@@ -14,11 +14,12 @@ def surjection_operator(surjections, n):
         
     if not isinstance(surjections, set):
         surjections = {surjections}
-     
+    
+    answer = set() 
     for surj in surjections:
         after = [{'pos': 0, 
                   'seq': ((),)*(surj[0]-1) + ((0,),) + ((),)*(max(surj)-surj[0])}]
-
+        
         for i in range(n+len(surj)-1):
             before = after[:]
             after = []
@@ -37,7 +38,6 @@ def surjection_operator(surjections, n):
 
                     after.append(_new_term(term, num_to_append, pos_to_append,0))
 
-        answer = set()
         for term in after:
             operators = tuple()
             for seq in term['seq']:
