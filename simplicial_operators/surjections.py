@@ -5,12 +5,12 @@ def surjection_operator(surjections, n):
     set of surjection on a n-simplex'''
     
     def _new_term(term, num_to_append, pos_to_append, k):
-            tuple_to_replace = term['seq'][pos_to_append]+(num_to_append,)
+        tuple_to_replace = term['seq'][pos_to_append]+(num_to_append,)
 
-            return {'pos': term['pos']+k, 
-                    'seq': term['seq'][:pos_to_append] 
-                            + (tuple_to_replace,)
-                            + term['seq'][pos_to_append+1:]}
+        return {'pos': term['pos']+k, 
+                'seq': term['seq'][:pos_to_append] 
+                        + (tuple_to_replace,)
+                        + term['seq'][pos_to_append+1:]}
         
     if not isinstance(surjections, set):
         surjections = {surjections}
